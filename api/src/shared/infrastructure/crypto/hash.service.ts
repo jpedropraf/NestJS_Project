@@ -4,19 +4,17 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class HashService {
-  constructor(private readonly config: ConfigService) {}
+  private readonly pepper: string;
+
+  constructor(private readonly config: ConfigService) {
+    this.pepper = this.config.getOrThrow<string>('PEPPER');
+  }
 
   async generateHash(rawPassword: string): Promise<string> {
-    const pepper = this.config.getOrThrow<string>('PEPPER');
-    return argon2.hash(`${rawPassword}${pepper}`);
+    return argon2.hash(`${rawPassword}${this.pepper}`);
   }
 
   async comparePassword(hash: string, rawPassword: string): Promise<boolean> {
-    const pepper = this.config.getOrThrow<string>('PEPPER');
-    return argon2.verify(hash, `${rawPassword}${pepper}`);
-  }
-
-  async comparePassowrd(hash: string, rawPassword: string): Promise<boolean> {
-    return this.comparePassword(hash, rawPassword);
+    return argon2.verify(hash, `${rawPassword}${this.pepper}`);
   }
 }
