@@ -1,58 +1,99 @@
-export class Password {
-    private readonly _value: string;
-  
-    private constructor(value: string) {
-      this._value = value;
-    }
-  
-    public static create(rawPassword: string): Password {
-      const passwordRegex =/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/ ;
-      if (!rawPassword || rawPassword.length < 18 || !passwordRegex.test(rawPassword)) {
-        throw new Error('A senha deve ter pelo menos 8 caracteres.');
-      }
-      return new Password(rawPassword);
-    }
-  
-    public static fromHash(hash: string): Password {
-      return new Password(hash);
-    }
-  
-    public get value(): string {
-      return this._value;
-    }
-}
-  
-export class Email {
-    private readonly _value: string;
-  
-    private constructor(value: string) {
-      this._value = value;
-    }
-  
-    public static create(email: string): Email {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  
-      if (!email || !emailRegex.test(email)) {
-        throw new Error('invalid e-mail .');
-      }
-      return new Email(email.toLowerCase().trim());
-    }
-    public static fromValue(value: string): Email {
-      return new Email(value);
-    }
-    public get value(): string {
-      return this._value;
-    }
-}
-  
-export class GoogleId{
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/;
+const PASSWORD_MIN_LENGTH = 12;
 
-    
+export class Password {
+  private readonly _value: string;
+
+  private constructor(value: string) {
+    this._value = value;
+  }
+
+  public static create(rawPassword: string): Password {
+    if (
+      !rawPassword ||
+      rawPassword.length < PASSWORD_MIN_LENGTH || 
+      !PASSWORD_REGEX.test(rawPassword)
+    ) {
+      throw new Error(
+        `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres, ` +
+        'incluindo maiúscula, minúscula, número e caractere especial.',
+      );
+    }
+    return new Password(rawPassword);
+  }
+
+  public static fromHash(hash: string): Password {
+    return new Password(hash);
+  }
+
+  public get value(): string {
+    return this._value;
+  }
 }
+
+export class Email {
+  private readonly _value: string;
+
+  private constructor(value: string) {
+    this._value = value;
+  }
+
+  public static create(raw: string): Email {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!raw || !emailRegex.test(raw)) {
+      throw new Error('E-mail inválido.');
+    }
+    return new Email(raw.toLowerCase().trim());
+  }
+
+  public static fromValue(value: string): Email {
+    return new Email(value);
+  }
+
+  public get value(): string {
+    return this._value;
+  }
+}
+
+export class GoogleId {
+  private readonly _value: string;
+
+  private constructor(value: string) {
+    this._value = value;
+  }
+
+  public static create(raw: string): GoogleId {
+    if (!raw || raw.trim().length === 0) {
+      throw new Error('GoogleId inválido.');
+    }
+    return new GoogleId(raw.trim());
+  }
+
+  public static fromValue(value: string): GoogleId {
+    return new GoogleId(value);
+  }
+
+  public get value(): string {
+    return this._value;
+  }
+}
+
 
 export enum UserRole {
-  USER = 'USER',
+  USER  = 'USER',
   ADMIN = 'ADMIN',
+}
+
+
+export interface UserProperties {
+  id: string;
+  email: Email;
+  password?: Password;
+  googleId?: GoogleId; 
+  name?: string;
+  role?: UserRole;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export class UserEntity {
@@ -65,24 +106,15 @@ export class UserEntity {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
-  constructor(props: {
-    id: string;
-    email: Email;
-    password?: Password;
-    googleId?: string;
-    name?: string;
-    role?: UserRole;
-    createdAt?: Date;
-    updatedAt?: Date;
-  }) {
-    this.id = props.id;
-    this.email = props.email;
-    this.password = props.password;
-    this.googleId = props.googleId;
-    this.name = props.name;
-    this.role = props.role ?? UserRole.USER;
-    this.createdAt = props.createdAt ?? new Date();
-    this.updatedAt = props.updatedAt ?? new Date();
+  constructor( properties: UserProperties) {
+    this.id        = properties.id;
+    this.email     = properties.email;
+    this.password  = properties.password;
+    this.googleId  = properties.googleId;
+    this.name      = properties.name;
+    this.role      = properties.role ?? UserRole.USER;
+    this.createdAt = properties.createdAt ?? new Date();
+    this.updatedAt = properties.updatedAt ?? new Date();
   }
 
   get isAdmin(): boolean {
@@ -98,22 +130,34 @@ export class UserEntity {
   }
 
   get hasSetPassword(): boolean {
-    return !!this.password && !!this.password.value;
+    return !!this.password?.value;
   }
 
 
-  static createFromDto(dto: UserCreateDto, hashedPassword?: string): UserEntity {
+
+  withUpdates(changes: Partial<Omit<UserProperties, 'id' | 'createdAt'>>): UserEntity {
+      return new UserEntity({
+        id:        this.id,
+        email:     changes.email     ?? this.email,
+        password:  changes.password  ?? this.password,
+        googleId:  changes.googleId  ?? this.googleId,
+        name:      changes.name      ?? this.name,
+        role:      changes.role      ?? this.role,
+        createdAt: this.createdAt,
+        updatedAt: new Date(),
+      });
+    }
+
+
+
+  static createFromDto(dto: { email: string; name?: string }, hashedPassword?: string): UserEntity {
     return new UserEntity({
-      id: crypto.randomUUID(), 
-      email: Email.create(dto.email),
+      id:       crypto.randomUUID(),
+      email:    Email.create(dto.email),
       password: hashedPassword ? Password.fromHash(hashedPassword) : undefined,
-      name: dto.name,
-      role: UserRole.USER,
+      name:     dto.name,
+      role:     UserRole.USER,
     });
   }
-
 }
 
-function equals(arg0: RegExp) {
-  throw new Error("Function not implemented.");
-}
