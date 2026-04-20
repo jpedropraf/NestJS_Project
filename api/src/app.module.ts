@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config'; 
 import { PrismaModule } from './shared/database/prisma.module';
 import {HashModule} from './shared/infrastructure/crypto/hash.module'
+import { UserModule } from './modules/users/user.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import {HashModule} from './shared/infrastructure/crypto/hash.module'
     }),
     PrismaModule,
     HashModule,
+    UserModule,
   ],
   controllers: [],
   providers: [],
