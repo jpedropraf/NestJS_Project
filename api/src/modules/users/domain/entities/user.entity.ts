@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  Matches,
+  MinLength,
+} from 'class-validator';
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/;
 const PASSWORD_MIN_LENGTH = 12;
@@ -8,28 +14,41 @@ const VALIDATION_MESSAGES = {
   EMAIL_INVALID: 'The email format is invalid',
   PASSWORD_STRING: 'Password must be a string',
   PASSWORD_MIN: `Password must be at least ${PASSWORD_MIN_LENGTH} characters long`,
-  PASSWORD_FORMAT: 'Password must contain at least one uppercase, one lowercase, one number, and one special character',
+  PASSWORD_FORMAT:
+    'Password must contain at least one uppercase, one lowercase, one number, and one special character',
   NAME_STRING: 'Name must be a string',
 };
 
 export class Password {
   private readonly _value: string;
-  private constructor(value: string) { this._value = value; }
+  private constructor(value: string) {
+    this._value = value;
+  }
 
   public static create(rawPassword: string): Password {
-    if (!rawPassword || rawPassword.length < PASSWORD_MIN_LENGTH || !PASSWORD_REGEX.test(rawPassword)) {
+    if (
+      !rawPassword ||
+      rawPassword.length < PASSWORD_MIN_LENGTH ||
+      !PASSWORD_REGEX.test(rawPassword)
+    ) {
       throw new Error(VALIDATION_MESSAGES.PASSWORD_FORMAT);
     }
     return new Password(rawPassword);
   }
 
-  public static fromHash(hash: string): Password { return new Password(hash); }
-  public get value(): string { return this._value; }
+  public static fromHash(hash: string): Password {
+    return new Password(hash);
+  }
+  public get value(): string {
+    return this._value;
+  }
 }
 
 export class Email {
   private readonly _value: string;
-  private constructor(value: string) { this._value = value; }
+  private constructor(value: string) {
+    this._value = value;
+  }
 
   public static create(raw: string): Email {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -37,23 +56,32 @@ export class Email {
     return new Email(raw.toLowerCase().trim());
   }
 
-  public static fromValue(value: string): Email { return new Email(value); }
-  public get value(): string { return this._value; }
+  public static fromValue(value: string): Email {
+    return new Email(value);
+  }
+  public get value(): string {
+    return this._value;
+  }
 }
 
 export class GoogleId {
   private readonly _value: string;
-  private constructor(value: string) { this._value = value; }
+  private constructor(value: string) {
+    this._value = value;
+  }
 
   public static create(raw: string): GoogleId {
     if (!raw || raw.trim().length === 0) throw new Error('Invalid GoogleId.');
     return new GoogleId(raw.trim());
   }
 
-  public static fromValue(value: string): GoogleId { return new GoogleId(value); }
-  public get value(): string { return this._value; }
+  public static fromValue(value: string): GoogleId {
+    return new GoogleId(value);
+  }
+  public get value(): string {
+    return this._value;
+  }
 }
-
 
 export enum UserRole {
   USER = 'USER',
@@ -92,10 +120,19 @@ export class UserEntity {
     this.updatedAt = properties.updatedAt ?? new Date();
   }
 
-  get isAdmin(): boolean { return this.role === UserRole.ADMIN; }
-  get isSocialLogin(): boolean { return !!this.googleId; }
+  get isAdmin(): boolean {
+    return this.role === UserRole.ADMIN;
+  }
+  get isSocialLogin(): boolean {
+    return !!this.googleId;
+  }
+  canEdit(targetUserId: string): boolean {
+    return this.isAdmin || this.id === targetUserId;
+  }
 
-  withUpdates(changes: Partial<Omit<UserProperties, 'id' | 'createdAt'>>): UserEntity {
+  withUpdates(
+    changes: Partial<Omit<UserProperties, 'id' | 'createdAt'>>,
+  ): UserEntity {
     return new UserEntity({
       ...this,
       ...changes,
@@ -104,17 +141,15 @@ export class UserEntity {
   }
 }
 
-
-
 export class UserCreateDto {
   @ApiProperty({ example: 'john.doe@example.com', description: 'User email' })
   @IsEmail({}, { message: VALIDATION_MESSAGES.EMAIL_INVALID })
   email!: string;
 
-  @ApiProperty({ 
-    example: 'StrongPass@123', 
+  @ApiProperty({
+    example: 'StrongPass@123',
     description: 'Min 12 chars, upper, lower, number, special',
-    minLength: 12 
+    minLength: 12,
   })
   @IsString({ message: VALIDATION_MESSAGES.PASSWORD_STRING })
   @MinLength(12, { message: VALIDATION_MESSAGES.PASSWORD_MIN })

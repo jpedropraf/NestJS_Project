@@ -4,6 +4,6 @@ import { HashService } from './hash.service';
 @Global()
 @Module({
   providers: [HashService],
-  exports: [HashService], 
+  exports: [HashService],
 })
 export class HashModule {}
