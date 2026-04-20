@@ -1,30 +1,44 @@
-import { UserCreateDto, UserUpdateDto, UserResponseDto } from '../../presenters/dto/user.dto.js';
-import { UserRepository }                               from '../../domain/repositories/user.repository.js';
-import { UserEntity, Email, Password }                  from '../../domain/entities/user.entity.js';
-import { HashService }                                  from 'src/shared/infrastructure/crypto/hash.service.js';
-
-
-
+import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import {
+  UserCreateDto,
+  UserUpdateDto,
+  UserResponseDto,
+} from '../../presenters/dtos/user.dto.js';
+import { UserRepository } from '../../domain/repositories/user.repository.js';
+import {
+  UserEntity,
+  Email,
+  Password,
+} from '../../domain/entities/user.entity.js';
+import { HashService } from '../../../../shared/infrastructure/crypto/hash.service.js';
+@Injectable()
 export class CreateUserUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly hashService:    HashService,
+    private readonly hashService: HashService,
   ) {}
 
   async execute(dto: UserCreateDto): Promise<UserResponseDto> {
-    const exists = await this.userRepository.findByEmail(Email.create(dto.email));
+    const exists = await this.userRepository.findByEmail(
+      Email.create(dto.email),
+    );
     if (exists) throw new Error('Email already in use');
 
     const hashedPassword = await this.hashService.generateHash(dto.password);
-    const user = UserEntity.createFromDto(dto, hashedPassword);
+    const user = new UserEntity({
+      id: randomUUID(),
+      email: Email.create(dto.email),
+      password: Password.fromHash(hashedPassword),
+      name: dto.name,
+    });
     const saved = await this.userRepository.create(user);
 
     return UserResponseDto.fromEntity(saved);
   }
 }
 
-
-
+@Injectable()
 export class GetByIdUserUseCase {
   constructor(private readonly userRepository: UserRepository) {}
 
@@ -36,24 +50,28 @@ export class GetByIdUserUseCase {
   }
 }
 
-
+@Injectable()
 export class GetAllUsersUseCase {
   constructor(private readonly userRepository: UserRepository) {}
 
   async execute(): Promise<UserResponseDto[]> {
     const users = await this.userRepository.findAll();
-    return users.map(UserResponseDto.fromEntity);
+    return users.map((user) => UserResponseDto.fromEntity(user));
   }
 }
 
-
+@Injectable()
 export class UpdateUserUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly hashService:    HashService,
+    private readonly hashService: HashService,
   ) {}
 
-  async execute(targetUserId: UserEntity['id'],dto:UserUpdateDto,requesterUserId: UserEntity['id']): Promise<UserResponseDto> {
+  async execute(
+    targetUserId: UserEntity['id'],
+    dto: UserUpdateDto,
+    requesterUserId: UserEntity['id'],
+  ): Promise<UserResponseDto> {
     const user = await this.userRepository.findById(targetUserId);
     if (!user) throw new Error('User not found');
 
@@ -61,11 +79,15 @@ export class UpdateUserUseCase {
     if (!requester) throw new Error('Requester not found');
 
     if (!requester.canEdit(targetUserId)) {
-      throw new Error('Unauthorized user , the user is not allowed to do this action');
+      throw new Error(
+        'Unauthorized user , the user is not allowed to do this action',
+      );
     }
 
     if (dto.email && dto.email !== user.email.value) {
-      const emailExists = await this.userRepository.findByEmail(Email.create(dto.email));
+      const emailExists = await this.userRepository.findByEmail(
+        Email.create(dto.email),
+      );
       if (emailExists) throw new Error('Email already in use');
     }
 
@@ -74,9 +96,9 @@ export class UpdateUserUseCase {
       : undefined;
 
     const updated = user.withUpdates({
-      email:    dto.email    ? Email.create(dto.email) : undefined,
+      email: dto.email ? Email.create(dto.email) : undefined,
       password: newPassword,
-      name:     dto.name,
+      name: dto.name,
     });
 
     const saved = await this.userRepository.update(targetUserId, updated);
@@ -84,11 +106,14 @@ export class UpdateUserUseCase {
   }
 }
 
-
+@Injectable()
 export class DeleteUserUseCase {
   constructor(private readonly userRepository: UserRepository) {}
 
-  async execute(targetUserId: UserEntity['id'], requesterUserId: UserEntity['id']): Promise<void> {
+  async execute(
+    targetUserId: UserEntity['id'],
+    requesterUserId: UserEntity['id'],
+  ): Promise<void> {
     const user = await this.userRepository.findById(targetUserId);
     if (!user) throw new Error('User not found');
 
@@ -96,7 +121,9 @@ export class DeleteUserUseCase {
     if (!requester) throw new Error('Requester not found');
 
     if (!requester.canEdit(targetUserId)) {
-      throw new Error('Unauthorized user , the user is not allowed to do this action');
+      throw new Error(
+        'Unauthorized user , the user is not allowed to do this action',
+      );
     }
 
     await this.userRepository.delete(targetUserId);
