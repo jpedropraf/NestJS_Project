@@ -9,6 +9,8 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FastifyRequest } from 'fastify';
@@ -25,11 +27,13 @@ import {
   UpdateUserUseCase,
 } from '../../application/use-cases/user.use-case.js';
 
-type RequestWithUser = FastifyRequest & { user: { id: string } };
+type RequestWithUser = FastifyRequest & { user?: { id?: string } };
 
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly getAllUsersUseCase: GetAllUsersUseCase,
@@ -64,7 +68,7 @@ export class UsersController {
     @Body() dto: UserUpdateDto,
     @Req() req: RequestWithUser,
   ): Promise<UserResponseDto> {
-    const requesterId = req.user.id;
+    const requesterId = this.getRequesterId(req, 'update', targetId);
     return await this.updateUserUseCase.execute(targetId, dto, requesterId);
   }
 
@@ -75,7 +79,25 @@ export class UsersController {
     @Param('id') targetId: string,
     @Req() req: RequestWithUser,
   ): Promise<void> {
-    const requesterId = req.user.id;
+    const requesterId = this.getRequesterId(req, 'delete', targetId);
     await this.deleteUserUseCase.execute(targetId, requesterId);
+  }
+
+  private getRequesterId(
+    req: RequestWithUser,
+    action: 'update' | 'delete',
+    targetId: string,
+  ): string {
+    const requesterId = req.user?.id;
+    if (!requesterId) {
+      this.logger.warn(
+        `Unauthorized attempt to ${action} user ${targetId}: requester not present in request context`,
+      );
+      throw new UnauthorizedException(
+        'Authenticated user not found in request',
+      );
+    }
+
+    return requesterId;
   }
 }

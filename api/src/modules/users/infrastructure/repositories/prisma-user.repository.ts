@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import {
   UserEntity,
@@ -12,6 +12,8 @@ import { PrismaService } from '../../../../shared/database/prisma.service.js';
 
 @Injectable()
 export class PrismaUserRepository extends UserRepository {
+  private readonly logger = new Logger(PrismaUserRepository.name);
+
   constructor(private readonly prismaService: PrismaService) {
     super();
   }
