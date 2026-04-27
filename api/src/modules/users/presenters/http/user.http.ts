@@ -11,7 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Request } from 'express';
+import { FastifyRequest } from 'fastify';
 import {
   UserCreateDto,
   UserUpdateDto,
@@ -25,7 +25,7 @@ import {
   UpdateUserUseCase,
 } from '../../application/use-cases/user.use-case.js';
 
-type RequestWithUser = Request & { user: { id: string } };
+type RequestWithUser = FastifyRequest & { user: { id: string } };
 
 @ApiTags('users')
 @Controller('users')
